@@ -33,17 +33,22 @@ export default async function biosStandard(this: Sequence, installDevice = '', p
     // Imposta i dispositivi per Btrfs
     this.devices.root.name = `${installDevice}${p}1`
     this.devices.swap.name = 'none' // Nessuna partizione di swap
+    this.devices.boot.name = 'none'
   } else {
-    // --- CASO EXT4 (o default): CON PARTIZIONE DI SWAP ---
-    // Comportamento standard con partizione di swap.
-    await exec(`parted --script --align optimal ${installDevice} mkpart primary linux-swap 1MiB ${this.swapSize + 1}MiB`, this.echo) // Partizione 1: swap
-    await exec(`parted --script --align optimal ${installDevice} mkpart primary "" ${this.swapSize + 1}MiB 100%`, this.echo) // Partizione 2: root
-    await exec(`parted ${installDevice} set 2 boot on`, this.echo)
+    // --- CASO EXT4: /boot (4GB) + / (rest), NO SWAP ---
+    // Partition 1: /boot  1MiB -> 4097MiB (4GB, boot flag)
+    await exec(`parted --script --align optimal ${installDevice} mkpart primary ext4 1MiB 4097MiB`, this.echo)
+    await exec(`parted ${installDevice} set 1 boot on`, this.echo)
+    // Partition 2: /  4097MiB -> 100%
+    await exec(`parted --script --align optimal ${installDevice} mkpart primary "" 4097MiB 100%`, this.echo)
 
-    // Imposta i dispositivi per ext4
-    this.devices.swap.name = `${installDevice}${p}1`
-    this.devices.swap.fsType = 'swap'
-    this.devices.swap.mountPoint = 'none'
+    // Dedicated /boot partition (4GB)
+    this.devices.boot.name = `${installDevice}${p}1`
+    this.devices.boot.fsType = 'ext4'
+    this.devices.boot.mountPoint = '/boot'
+
+    // No swap partition
+    this.devices.swap.name = 'none'
 
     this.devices.root.name = `${installDevice}${p}2`
   }
@@ -52,8 +57,7 @@ export default async function biosStandard(this: Sequence, installDevice = '', p
   this.devices.root.fsType = fsType
   this.devices.root.mountPoint = '/'
 
-  // BOOT/DATA/EFI non sono usati in questo schema
-  this.devices.boot.name = 'none'
+  // DATA/EFI non sono usati in questo schema
   this.devices.data.name = 'none'
   this.devices.efi.name = 'none'
 
