@@ -1,0 +1,110 @@
+#cloud-config
+autoinstall:
+  version: 1
+  apt:
+    geoip: true
+    preserve_sources_list: false
+    primary:
+      - arches: [amd64]
+        uri: https://repo.huaweicloud.com/ubuntu
+      - arches: [default]
+        uri: http://ports.ubuntu.com/ubuntu-ports
+
+  identity:
+    hostname: ubuntu-server
+    username: ubuntu
+    password: "$6$j/6FKaGvOBawk54n$18J/U3APCJw5f/QiKGS/WPiCIVVbSz5tQ5gx8EODUfypNR.zjzYKLRtjfDOgLpd/W43zuHVioqELQOmEa34og1"
+
+  storage:
+    config:
+      - ptable: gpt
+        path: /dev/sda
+        wipe: superblock
+        preserve: false
+        grub_device: true
+        type: disk
+        id: disk-sda
+
+      # EFI 分区（512M），用于 UEFI 启动
+      - device: disk-sda
+        size: 536870912
+        flag: esp
+        number: 1
+        preserve: false
+        grub_device: true
+        type: partition
+        id: partition-efi
+
+      - fstype: fat32
+        volume: partition-efi
+        preserve: false
+        type: format
+        id: format-efi
+
+      # /boot 分区（4G），用于内核
+      - device: disk-sda
+        size: 4294967296
+        flag: ''
+        number: 2
+        preserve: false
+        grub_device: false
+        type: partition
+        id: partition-boot
+
+      - fstype: ext4
+        volume: partition-boot
+        preserve: false
+        type: format
+        id: format-boot
+
+      # 根分区（剩余空间，ext4）
+      - device: disk-sda
+        size: -1
+        flag: ''
+        number: 3
+        preserve: false
+        grub_device: false
+        type: partition
+        id: partition-root
+
+      - fstype: ext4
+        volume: partition-root
+        preserve: false
+        type: format
+        id: format-root
+
+      # 挂载点
+      - path: /boot/efi
+        device: format-efi
+        type: mount
+        id: mount-efi
+
+      - path: /boot
+        device: format-boot
+        type: mount
+        id: mount-boot
+
+      - path: /
+        device: format-root
+        type: mount
+        id: mount-root
+
+  ssh:
+    install-server: true
+    allow-pw: true
+
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+    variant: ''
+
+  user-data:
+    timezone: Asia/Shanghai
+    package_update: false
+    package_upgrade: false
+    write_files:
+      - path: /etc/sudoers.d/nopasswd
+        owner: root:root
+        permissions: '0440'
+        content: |
+          %sudo ALL=(ALL) NOPASSWD:ALL

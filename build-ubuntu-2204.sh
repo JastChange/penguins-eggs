@@ -218,15 +218,16 @@ curl -fsSL https://deb.nodesource.com/setup_22.x | bash - 2>/dev/null
 apt-get install -y -q nodejs
 echo "Node.js：\$(node --version)"
 
-echo "▸ 安装 penguins-eggs..."
-curl -fsSL https://pieroproietti.github.io/penguins-eggs-ppa/KEY.asc \
-  | gpg --dearmor -o /usr/share/keyrings/penguins-eggs.gpg 2>/dev/null
-echo "deb [signed-by=/usr/share/keyrings/penguins-eggs.gpg] \
-https://pieroproietti.github.io/penguins-eggs-ppa ./" \
-  > /etc/apt/sources.list.d/penguins-eggs.list
-apt-get update -q
-apt-get install -y penguins-eggs
-echo "penguins-eggs：\$(eggs --version 2>/dev/null || echo '获取失败')"
+echo "▸ 安装 penguins-eggs（直接下载 .deb）..."
+EGGS_VERSION="26.3.21"
+EGGS_RELEASE="1"
+EGGS_DEB="penguins-eggs_\${EGGS_VERSION}-\${EGGS_RELEASE}_amd64.deb"
+EGGS_URL="https://penguins-eggs.net/basket/packages/debs/\${EGGS_DEB}"
+curl -fL "\${EGGS_URL}" -o "/tmp/\${EGGS_DEB}" \
+  || { echo "[ERROR] 下载 penguins-eggs 失败，请检查网络或 URL：\${EGGS_URL}"; exit 1; }
+apt-get install -y -q "/tmp/\${EGGS_DEB}"
+rm -f "/tmp/\${EGGS_DEB}"
+echo "penguins-eggs：\$(eggs --version 2>/dev/null || echo '获取版本失败')"
 
 CHROOT_BASE
 
